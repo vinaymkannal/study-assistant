@@ -54,7 +54,7 @@ Instructions:
 1. Provide 4 to 6 flashcards.
 2. Provide 3 to 5 quiz questions.
 3. Every quiz question MUST have an "options" array with exactly 4 strings.
-4. The "answer" string MUST match one of the items in the "options" array exactly.
+4. CRITICAL RULE FOR QUIZ ANSWERS: The "answer" string MUST be copied EXACTLY, character-for-character, from one of the strings in its "options" array. Do NOT paraphrase, abbreviate, rename, or modify the option string in any way.
 5. EVERY quiz question MUST include a mandatory, non-empty "explanation" string explaining why the answer is correct.
 6. Return ONLY the raw JSON object. Do not include markdown headers or conversational commentary.`;
 
@@ -69,7 +69,10 @@ Instructions:
         model,
         prompt,
         stream: false,
-        format: 'json'
+        format: 'json',
+        options: {
+          temperature: 0.1
+        }
       })
     });
   } catch (netErr) {

@@ -41,7 +41,7 @@ export function validateStudySet(data) {
       throw new Error(`Quiz question at index ${index} missing valid "question"`);
     }
 
-    // Handle options: if array of strings or array of objects with text
+    // Handle options: array of strings or array of objects with text property
     let cleanOptions = [];
     if (Array.isArray(q.options) && q.options.length === 4) {
       cleanOptions = q.options.map(opt => {
@@ -73,13 +73,49 @@ export function validateStudySet(data) {
 
     const trimmedAnswer = rawAnswer.trim();
 
-    // Answer matching
+    // 1. Exact match
     let matchedOption = cleanOptions.find(opt => opt === trimmedAnswer);
+
+    // 2. Case-insensitive match
     if (!matchedOption) {
       matchedOption = cleanOptions.find(opt => opt.toLowerCase() === trimmedAnswer.toLowerCase());
     }
+
+    // 3. Substring match
     if (!matchedOption) {
       matchedOption = cleanOptions.find(opt => trimmedAnswer.toLowerCase().includes(opt.toLowerCase()) || opt.toLowerCase().includes(trimmedAnswer.toLowerCase()));
+    }
+
+    // 4. Token prefix / similarity match (e.g., "Long-Job-First" vs "Longest-Job-First")
+    if (!matchedOption) {
+      const answerTokens = trimmedAnswer.toLowerCase().split(/[\s\-_]+/).filter(Boolean);
+      let bestScore = 0;
+      let bestMatch = null;
+      let secondBestScore = 0;
+
+      cleanOptions.forEach(opt => {
+        const optTokens = opt.toLowerCase().split(/[\s\-_]+/).filter(Boolean);
+        let score = 0;
+        answerTokens.forEach(aToken => {
+          if (optTokens.some(oToken => oToken.startsWith(aToken) || aToken.startsWith(oToken))) {
+            score += 1;
+          }
+        });
+
+        if (score > bestScore) {
+          secondBestScore = bestScore;
+          bestScore = score;
+          bestMatch = opt;
+        } else if (score > secondBestScore) {
+          secondBestScore = score;
+        }
+      });
+
+      // Require unambiguous best match with at least 50% token overlap
+      if (bestMatch && bestScore > secondBestScore && (bestScore / answerTokens.length) >= 0.5) {
+        matchedOption = bestMatch;
+        console.log(`[Validator] Deterministically normalized answer "${trimmedAnswer}" to option "${matchedOption}"`);
+      }
     }
 
     if (!matchedOption) {
