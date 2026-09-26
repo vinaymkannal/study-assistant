@@ -40,31 +40,44 @@ export function validateStudySet(data) {
     if (typeof q.question !== 'string' || !q.question.trim()) {
       throw new Error(`Quiz question at index ${index} missing valid "question"`);
     }
-    if (!Array.isArray(q.options) || q.options.length !== 4) {
+
+    // Handle options: if array of strings or array of objects with text
+    let cleanOptions = [];
+    if (Array.isArray(q.options) && q.options.length === 4) {
+      cleanOptions = q.options.map(opt => {
+        if (typeof opt === 'string') return opt.trim();
+        if (opt && typeof opt === 'object' && typeof opt.text === 'string') return opt.text.trim();
+        return String(opt).trim();
+      });
+    } else {
       throw new Error(`Quiz question at index ${index} must have exactly 4 options`);
     }
 
-    const validOptions = q.options.every(opt => typeof opt === 'string' && opt.trim().length > 0);
+    const validOptions = cleanOptions.every(opt => opt.length > 0);
     if (!validOptions) {
-      throw new Error(`Quiz question at index ${index} has empty or non-string options`);
+      throw new Error(`Quiz question at index ${index} has empty options`);
     }
 
-    if (typeof q.answer !== 'string' || !q.answer.trim()) {
+    // Determine answer string
+    let rawAnswer = q.answer;
+    if (!rawAnswer && Array.isArray(q.options)) {
+      const correctObj = q.options.find(o => typeof o === 'object' && o.isCorrect);
+      if (correctObj && correctObj.text) {
+        rawAnswer = correctObj.text;
+      }
+    }
+
+    if (typeof rawAnswer !== 'string' || !rawAnswer.trim()) {
       throw new Error(`Quiz question at index ${index} missing valid "answer"`);
     }
 
-    const trimmedAnswer = q.answer.trim();
-    const cleanOptions = q.options.map(o => o.trim());
+    const trimmedAnswer = rawAnswer.trim();
 
-    // Exact match check
+    // Answer matching
     let matchedOption = cleanOptions.find(opt => opt === trimmedAnswer);
-
-    // Case-insensitive fallback
     if (!matchedOption) {
       matchedOption = cleanOptions.find(opt => opt.toLowerCase() === trimmedAnswer.toLowerCase());
     }
-
-    // Substring fallback (e.g., if answer is "B) Round Robin" and option is "Round Robin")
     if (!matchedOption) {
       matchedOption = cleanOptions.find(opt => trimmedAnswer.toLowerCase().includes(opt.toLowerCase()) || opt.toLowerCase().includes(trimmedAnswer.toLowerCase()));
     }
@@ -73,15 +86,17 @@ export function validateStudySet(data) {
       throw new Error(`Quiz question at index ${index} answer "${trimmedAnswer}" does not match any option [${cleanOptions.join(', ')}]`);
     }
 
-    if (typeof q.explanation !== 'string' || !q.explanation.trim()) {
-      throw new Error(`Quiz question at index ${index} missing valid "explanation"`);
-    }
+    // Explanation extraction & fallback
+    let rawExplanation = q.explanation || q.reason || q.details || q.rationale || q.exp;
+    let finalExplanation = (typeof rawExplanation === 'string' && rawExplanation.trim())
+      ? rawExplanation.trim()
+      : `"${matchedOption}" is the correct answer for this question.`;
 
     return {
       question: q.question.trim(),
       options: cleanOptions,
       answer: matchedOption,
-      explanation: q.explanation.trim()
+      explanation: finalExplanation
     };
   });
 

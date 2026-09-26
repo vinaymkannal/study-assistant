@@ -9,16 +9,21 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const HOST = '0.0.0.0';
 
-app.use(cors());
+const frontendUrl = process.env.FRONTEND_URL;
+app.use(cors({
+  origin: frontendUrl ? [frontendUrl, 'http://localhost:3000'] : '*'
+}));
+
 app.use(express.json({ limit: '1mb' }));
 
-app.get('/health', (req, res) => {
+app.get(['/health', '/api/health'], (req, res) => {
   res.json({
     status: 'ok',
     service: 'Study Assistant API',
-    model: process.env.OLLAMA_MODEL || 'llama3.2:latest',
-    ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
+    provider: process.env.AI_PROVIDER || 'ollama_local',
+    model: process.env.OLLAMA_MODEL || 'llama3.2:latest'
   });
 });
 
@@ -45,7 +50,7 @@ app.post('/api/generate', async (req, res, next) => {
       });
     }
 
-    console.log('[API] Starting study content generation with Ollama...');
+    console.log('[API] Starting study content generation...');
     const rawData = await generateStudyContent(topic.trim());
 
     console.log('[API] Validating output structure...');
@@ -64,8 +69,8 @@ app.post('/api/generate', async (req, res, next) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Study Assistant backend running on port ${PORT}`);
-  console.log(`Configured Ollama URL: ${process.env.OLLAMA_BASE_URL || 'http://localhost:11434'}`);
-  console.log(`Configured Ollama Model: ${process.env.OLLAMA_MODEL || 'llama3.2:latest'}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Study Assistant backend running on http://${HOST}:${PORT}`);
+  console.log(`AI Provider: ${process.env.AI_PROVIDER || 'ollama_local'}`);
+  console.log(`Model: ${process.env.OLLAMA_MODEL || 'llama3.2:latest'}`);
 });
