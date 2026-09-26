@@ -1,46 +1,70 @@
-# Deployment Guide - Study Assistant
+# Deployment Guide - Study Assistant (Render)
 
-This guide explains how to deploy the Study Assistant backend to **Render** (or Railway) and the frontend to **Vercel** (or Netlify).
+This guide provides step-by-step instructions for deploying the Study Assistant full-stack application on **Render**.
 
 ---
 
-## 1. Backend Deployment (Render)
+## Architecture Overview
 
-1. Push your project repository to GitHub.
-2. Log into [Render.com](https://render.com/) and click **New +** -> **Web Service**.
+- **Backend**: Render Web Service (Node.js Express API)
+- **Frontend**: Render Static Site (React Vite application)
+
+---
+
+## Part 1: Deploy Backend (Render Web Service)
+
+1. Push your repository to **GitHub**.
+2. Log into [Render Dashboard](https://dashboard.render.com/) and click **New +** -> **Web Service**.
 3. Connect your GitHub repository.
-4. Set the following configuration:
+4. Fill in the service configuration:
    - **Name**: `study-assistant-backend`
    - **Root Directory**: `backend`
    - **Environment**: `Node`
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
-5. Under **Environment Variables**, add:
-   - `GEMINI_API_KEY`: `your_actual_gemini_api_key`
-   - `PORT`: `5000` (or leave default assigned by Render)
+5. Scroll to **Environment Variables** and add:
+
+| Key | Value | Note |
+| :--- | :--- | :--- |
+| `AI_PROVIDER` | `ollama_cloud` | Specifies cloud provider mode |
+| `OLLAMA_CLOUD_BASE_URL` | `https://ollama.com` | Base URL for Ollama Cloud API |
+| `OLLAMA_CLOUD_API_KEY` | `your_server_side_secret_key` | Secret server-side API key |
+| `OLLAMA_MODEL` | `llama3.2:latest` | Target cloud model |
+| `FRONTEND_URL` | `https://study-assistant-frontend.onrender.com` | Allowed CORS origin |
+
 6. Click **Create Web Service**.
-7. Copy your deployed backend URL (e.g., `https://study-assistant-backend.onrender.com`).
+7. Once deployed, copy your backend service URL (e.g. `https://study-assistant-backend.onrender.com`).
 
 ---
 
-## 2. Frontend Deployment (Vercel)
+## Part 2: Deploy Frontend (Render Static Site)
 
-1. Log into [Vercel.com](https://vercel.com/) and click **Add New** -> **Project**.
-2. Select your GitHub repository.
-3. Set the following configuration:
-   - **Framework Preset**: `Vite`
+1. In Render Dashboard, click **New +** -> **Static Site**.
+2. Connect the same GitHub repository.
+3. Fill in the static site configuration:
+   - **Name**: `study-assistant-frontend`
    - **Root Directory**: `frontend`
    - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-4. Expand **Environment Variables** and add:
-   - `VITE_API_URL`: `https://study-assistant-backend.onrender.com` (use your Render URL from step 1)
-5. Click **Deploy**.
+   - **Publish Directory**: `dist`
+4. Under **Environment Variables**, add:
+
+| Key | Value | Note |
+| :--- | :--- | :--- |
+| `VITE_API_URL` | `https://study-assistant-backend.onrender.com` | Deployed backend URL |
+
+5. Click **Create Static Site**.
 
 ---
 
-## 3. Testing Deployed Application
+## Part 3: Verification
 
-1. Open your Vercel deployment URL.
-2. Enter a sample topic (e.g. `Operating Systems CPU Scheduling`).
-3. Verify that the request successfully hits your Render backend.
-4. Verify flashcards flip, quiz answers evaluate, score calculates, and "Retry Wrong Answers" functions.
+1. Test backend health check:
+   ```http
+   GET https://study-assistant-backend.onrender.com/api/health
+   ```
+   Should return `{ "status": "ok", "service": "Study Assistant API", ... }`.
+
+2. Open your deployed static site (`https://study-assistant-frontend.onrender.com`).
+3. Enter a study topic (e.g. `Operating Systems Process Scheduling`) and click **Generate Study Set**.
+4. Open browser DevTools -> Network tab to verify requests target:
+   `POST https://study-assistant-backend.onrender.com/api/generate`
